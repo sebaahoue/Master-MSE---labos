@@ -1,0 +1,45 @@
+version: '2.2'
+services:
+  es-eval01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.1
+    container_name: es-eval01
+    environment:
+      - node.name=es-eval01
+      - cluster.name=es-eval-cluster
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es-eval01-data:/usr/share/elasticsearch/data
+      - ./data:/usr/share/elasticsearch/config/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - elastic
+  kib-eval01:
+    image: docker.elastic.co/kibana/kibana:7.14.1
+    container_name: kib-eval01
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-eval01:9200
+    volumes:
+      - kib-eval01-data:/usr/share/elasticsearch/data
+    ports:
+      - 5601:5601
+    networks:
+      - elastic
+    depends_on:
+      - es-eval01
+
+volumes:
+  es-eval01-data:
+    driver: local
+  kib-eval01-data:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
