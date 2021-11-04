@@ -61,8 +61,18 @@ def evaluate_index(index_name: str,
     # Initialize metrics for the current index evaluation
     m = RankingMetrics()
     m.index_name = index_name
-
     # TODO: for each query calculate the metrics and then summarize them in m
+    matching_queries = []
+    matching_qrels = []
+    
+    for q in queries:
+        matching_queries += search(q, index_name, client)
+    for q in qrels:
+        matching_qrels += search(q, index_name, client)
+    
+    m.total_retrieved_docs = len(matching_queries)
+    m.total_relevant_docs = len(matching_qrels)
+    m.total_retrieved_relevant_docs =  len(list(set(matching_queries) & set(matching_qrels)))
 
     return m
 
