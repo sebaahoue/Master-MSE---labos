@@ -1,1 +1,3 @@
+envdocker-compose.yml
+*.env
 env
