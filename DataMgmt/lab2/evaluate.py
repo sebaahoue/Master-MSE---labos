@@ -4,6 +4,7 @@ import pprint
 from pathlib import Path
 from collections import defaultdict
 from types import SimpleNamespace
+import matplotlib.pyplot as plt
 
 from elasticsearch import Elasticsearch, client
 from elasticsearch.client import indices
@@ -66,36 +67,36 @@ def evaluate_index(index_name: str,
     matching_qrels = []
 
     # query_results = {}
-    qrel_results = {}
-    query_total = 0
-    qrel_total = 0
     precision_sum = 0
     recall_sum = 0
 
-    for q in queries:
-        matching_queries += search(q, index_name, client)
-    
-    for q in qrels:
-        matching_qrels += search(q, index_name, client)
+
+    for q, q_str in queries.items():
+        res = search(q_str, index_name, client)
+        matching_queries+= res
+        matching_qrels+= qrels[q]
+        precision_sum+= len(list(set(qrels[q]) & set(res))) / len(res)
+        if len(qrels[q]):
+            recall_sum+= len(list(set(qrels[q]) & set(res))) / len(qrels[q])
 
     
-    query_results = {q: search(q, index_name, client) for q in queries.keys()} # dictionnaire clé : id de la query, valeur : liste des queries
-    [query_total := query_total + len(q) for q in query_results.values()] # total de queries
+    # query_results = {q: search(q, index_name, client) for q in queries.keys()} # dictionnaire clé : id de la query, valeur : liste des queries
+    # [query_total := query_total + len(q) for q in query_results.values()] # total de queries
     
     
 
-    qrel_results = {q: qrels[q] for q in query_results.keys()} # dict clé : id de la query, val : set des qrels
-    [qrel_total := qrel_total + len(q) for q in qrel_results.values()] # total qrels
+    # qrel_results = {q: qrels[q] for q in query_results.keys()} # dict clé : id de la query, val : set des qrels
+    # [qrel_total := qrel_total + len(q) for q in qrel_results.values()] # total qrels
 
-    [precision_sum:= precision_sum + len(qrel_results[k])/query_total for k in queries.keys()]
+    # [precision_sum:= precision_sum + len(qrel_results[k])/query_total for k in queries.keys()]
 
-    [[recall_sum := recall_sum + len(qrel_results[k])/len(matching_qrels)] for k in queries.keys()]
+    # [[recall_sum := recall_sum + len(qrel_results[k])/len(matching_qrels)] for k in queries.keys()]
 
     m.total_retrieved_docs = len(matching_queries)
     m.total_relevant_docs = len(matching_qrels)
     m.total_retrieved_relevant_docs =  len(list(set(matching_queries) & set(matching_qrels)))
-    m.avg_precision = precision_sum / len(queries.keys())
-    m.avg_recall = recall_sum / len(queries.keys())
+    m.avg_precision = precision_sum / len(queries)
+    m.avg_recall = recall_sum / len(queries)
     m.f_measure = (2*m.avg_precision*m.avg_recall)/(m.avg_recall+m.avg_precision)
     return m
 
