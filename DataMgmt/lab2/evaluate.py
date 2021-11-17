@@ -4,7 +4,7 @@ import pprint
 from pathlib import Path
 from collections import defaultdict
 from types import SimpleNamespace
-import matplotlib.pyplot as plt
+import numpy as np
 
 from elasticsearch import Elasticsearch, client
 from elasticsearch.client import indices
@@ -55,6 +55,14 @@ class RankingMetrics(SimpleNamespace):
     """Average of the precision at the 11 standard recall levels of each query"""
 
 
+def get_max_precision_recall(recalls, recall):
+    max = 0
+    for k in recalls:
+        if k[0] == recall and k[1] > max:
+            max = k[1]
+            break
+    return max
+
 def evaluate_index(index_name: str, 
                    queries: dict[QueryId, str], 
                    qrels: dict[QueryId, set[DocId]], 
@@ -66,6 +74,7 @@ def evaluate_index(index_name: str,
     matching_queries = []
     matching_qrels = []
     avg_p_for_each_query= []
+    recall_for_each_query = []
     # query_results = {}
     precision_sum = 0.0
     recall_sum = 0.0
@@ -75,11 +84,23 @@ def evaluate_index(index_name: str,
         res = search(q_str, index_name, client)
         count_nbr_of_doc_correct = 1
         avg_prec = []
-        for i in range(1, len(res)+1):
+        recalls = []
+        for i in range(1, len(res)+2):
             avg_prec.append(count_nbr_of_doc_correct/i)
-            if res[i-1] in qrels[q]:
+            if qrels[q]:
+                recall = count_nbr_of_doc_correct/len(qrels[q])
+            else:
+                if i==1:
+                    recall = 0
+                else:
+                    recall = recalls[i-2]
+
+            recalls.append((recall, count_nbr_of_doc_correct/i))
+            if res[i-2] in qrels[q]:
                 count_nbr_of_doc_correct += 1
+            
         avg_p_for_each_query.append(sum(avg_prec)/len(avg_prec))
+        recall_for_each_query.append(recalls)
         matching_queries+= res
         matching_qrels+= qrels[q]
         precision_sum+= len(list(set(qrels[q]) & set(res))) / len(res)
@@ -88,6 +109,26 @@ def evaluate_index(index_name: str,
             R_doc = len(qrels[q])
             res = res[:R_doc]
             avg_r_precision_sum  += len(list(set(qrels[q]) & set(res))) / R_doc
+
+    global_prec_recall = []
+    
+    for k in recall_for_each_query:
+        prec_recall = []
+        counter = 0
+        for i in range(11):
+            max_prec_recall = get_max_precision_recall(k, k[counter][0])
+            prec_recall.append((i/10, max_prec_recall))
+            counter += 1
+        print(counter)
+        global_prec_recall += prec_recall
+
+    bins = np.arange(0.0, 1.1, 0.1)
+    values, edges = np.histogram(global_prec_recall, bins=bins)
+
+
+
+    # print(qrels)
+
     
     # query_results = {q: search(q, index_name, client) for q in queries.keys()} # dictionnaire clé : id de la query, valeur : liste des queries
     # [query_total := query_total + len(q) for q in query_results.values()] # total de queries
@@ -103,15 +144,17 @@ def evaluate_index(index_name: str,
 
     # print(avg_p_for_each_query[1])
     # print(avg_p_for_each_query)
-    mean_avg_prec = 0
-    m.mean_average_precision = sum(avg_p_for_each_query)/len(avg_p_for_each_query)
+    # mean_avg_prec = 0
+    
     m.total_retrieved_docs = len(matching_queries)
     m.total_relevant_docs = len(matching_qrels)
     m.total_retrieved_relevant_docs =  len(list(set(matching_queries) & set(matching_qrels)))
     m.avg_precision = precision_sum / len(queries)
     m.avg_recall = recall_sum / len(queries)
-    m.avg_r_precision = avg_r_precision_sum/ len(queries)
     m.f_measure = (2*m.avg_precision*m.avg_recall)/(m.avg_recall+m.avg_precision)
+    m.mean_average_precision = sum(avg_p_for_each_query)/len(avg_p_for_each_query)
+    m.avg_r_precision = avg_r_precision_sum/ len(queries)
+    m.avg_precision_at_recall_level = [val/len(queries) for val in values]
     return m
 
 
