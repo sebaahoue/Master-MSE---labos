@@ -4,7 +4,7 @@ import pprint
 from pathlib import Path
 from collections import defaultdict
 from types import SimpleNamespace
-import numpy as np
+import matplotlib.pyplot as plt
 
 from elasticsearch import Elasticsearch, client
 from elasticsearch.client import indices
@@ -171,6 +171,11 @@ def read_qrels() -> dict[QueryId, set[DocId]]:
             qrels[query_id] = docs
         return qrels
 
+def plot_graph(precision_recall_list):
+    plt.plot(precision_recall_list, '-ok')
+    plt.show()
+
+
 
 def main():
     queries = read_queries()
@@ -191,6 +196,7 @@ def main():
             pprint.pprint(metrics, metric_fp)
             pprint.pprint(metrics)  # Also print to stdout
 
+            plot_graph(metrics.avg_precision_at_recall_level)
 
 if __name__ == "__main__":
     # execute only if run as a script
