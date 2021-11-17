@@ -75,7 +75,6 @@ def evaluate_index(index_name: str,
     matching_qrels = []
     avg_p_for_each_query= []
     recall_for_each_query = []
-    # query_results = {}
     precision_sum = 0.0
     recall_sum = 0.0
     avg_r_precision_sum = 0.0
@@ -114,37 +113,18 @@ def evaluate_index(index_name: str,
     
     for k in recall_for_each_query:
         prec_recall = []
-        counter = 0
         for i in range(11):
-            max_prec_recall = get_max_precision_recall(k, k[counter][0])
+            max_prec_recall = get_max_precision_recall(k, k[i][0])
             prec_recall.append((i/10, max_prec_recall))
-            counter += 1
-        print(counter)
-        global_prec_recall += prec_recall
-
-    bins = np.arange(0.0, 1.1, 0.1)
-    values, edges = np.histogram(global_prec_recall, bins=bins)
-
-
-
-    # print(qrels)
-
+        global_prec_recall.append(prec_recall)
     
-    # query_results = {q: search(q, index_name, client) for q in queries.keys()} # dictionnaire clé : id de la query, valeur : liste des queries
-    # [query_total := query_total + len(q) for q in query_results.values()] # total de queries
-    
-    
+    mean_prec_recall = []
 
-    # qrel_results = {q: qrels[q] for q in query_results.keys()} # dict clé : id de la query, val : set des qrels
-    # [qrel_total := qrel_total + len(q) for q in qrel_results.values()] # total qrels
-
-    # [precision_sum:= precision_sum + len(qrel_results[k])/query_total for k in queries.keys()]
-
-    # [[recall_sum := recall_sum + len(qrel_results[k])/len(matching_qrels)] for k in queries.keys()]
-
-    # print(avg_p_for_each_query[1])
-    # print(avg_p_for_each_query)
-    # mean_avg_prec = 0
+    for i in range(11):
+        sum_prec = 0 
+        for q in global_prec_recall:
+            sum_prec += q[i][1]
+        mean_prec_recall.append(sum_prec/len(queries))
     
     m.total_retrieved_docs = len(matching_queries)
     m.total_relevant_docs = len(matching_qrels)
@@ -154,7 +134,7 @@ def evaluate_index(index_name: str,
     m.f_measure = (2*m.avg_precision*m.avg_recall)/(m.avg_recall+m.avg_precision)
     m.mean_average_precision = sum(avg_p_for_each_query)/len(avg_p_for_each_query)
     m.avg_r_precision = avg_r_precision_sum/ len(queries)
-    m.avg_precision_at_recall_level = [val/len(queries) for val in values]
+    m.avg_precision_at_recall_level = mean_prec_recall
     return m
 
 
