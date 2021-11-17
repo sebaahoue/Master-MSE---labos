@@ -67,8 +67,9 @@ def evaluate_index(index_name: str,
     matching_qrels = []
 
     # query_results = {}
-    precision_sum = 0
-    recall_sum = 0
+    precision_sum = 0.0
+    recall_sum = 0.0
+    avg_r_precision_sum = 0.0
 
 
     for q, q_str in queries.items():
@@ -78,7 +79,9 @@ def evaluate_index(index_name: str,
         precision_sum+= len(list(set(qrels[q]) & set(res))) / len(res)
         if len(qrels[q]):
             recall_sum+= len(list(set(qrels[q]) & set(res))) / len(qrels[q])
-
+            R_doc = len(qrels[q])
+            res = res[:R_doc]
+            avg_r_precision_sum  += len(list(set(qrels[q]) & set(res))) / R_doc
     
     # query_results = {q: search(q, index_name, client) for q in queries.keys()} # dictionnaire clé : id de la query, valeur : liste des queries
     # [query_total := query_total + len(q) for q in query_results.values()] # total de queries
@@ -97,6 +100,7 @@ def evaluate_index(index_name: str,
     m.total_retrieved_relevant_docs =  len(list(set(matching_queries) & set(matching_qrels)))
     m.avg_precision = precision_sum / len(queries)
     m.avg_recall = recall_sum / len(queries)
+    m.avg_r_precision = avg_r_precision_sum/ len(queries)
     m.f_measure = (2*m.avg_precision*m.avg_recall)/(m.avg_recall+m.avg_precision)
     return m
 
