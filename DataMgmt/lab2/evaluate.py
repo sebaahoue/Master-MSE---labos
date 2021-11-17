@@ -65,7 +65,7 @@ def evaluate_index(index_name: str,
     # TODO: for each query calculate the metrics and then summarize them in m
     matching_queries = []
     matching_qrels = []
-    avg_p_for_each_query= {}
+    avg_p_for_each_query= []
     # query_results = {}
     precision_sum = 0.0
     recall_sum = 0.0
@@ -74,13 +74,12 @@ def evaluate_index(index_name: str,
     for q, q_str in queries.items():
         res = search(q_str, index_name, client)
         count_nbr_of_doc_correct = 1
-        avg_prec = 0
+        avg_prec = []
         for i in range(1, len(res)+1):
+            avg_prec.append(count_nbr_of_doc_correct/i)
             if res[i-1] in qrels[q]:
-                avg_prec += count_nbr_of_doc_correct/i
                 count_nbr_of_doc_correct += 1
-        print(avg_prec)
-        avg_p_for_each_query[q] = avg_prec
+        avg_p_for_each_query.append(sum(avg_prec)/len(avg_prec))
         matching_queries+= res
         matching_qrels+= qrels[q]
         precision_sum+= len(list(set(qrels[q]) & set(res))) / len(res)
@@ -105,7 +104,7 @@ def evaluate_index(index_name: str,
     # print(avg_p_for_each_query[1])
     # print(avg_p_for_each_query)
     mean_avg_prec = 0
-    m.mean_average_precision = sum([avg_p_for_each_query[q]/len(qrels[q]) if qrels[q] else 0 for q in avg_p_for_each_query]) / len(queries)
+    m.mean_average_precision = sum(avg_p_for_each_query)/len(avg_p_for_each_query)
     m.total_retrieved_docs = len(matching_queries)
     m.total_relevant_docs = len(matching_qrels)
     m.total_retrieved_relevant_docs =  len(list(set(matching_queries) & set(matching_qrels)))
