@@ -1,4 +1,4 @@
 log/*
 tmp/*
-work/*/neo4j/data/*
+**/neo4j/data/*
 .shell_history
