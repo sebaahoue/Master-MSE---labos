@@ -1,3 +1,4 @@
 envdocker-compose.yml
 *.env
 env
+**/neo4j/data/*
