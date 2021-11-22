@@ -64,7 +64,7 @@ class GenerateTrainNetwork:
         result = tx.run(query, city1=city1, city2=city2, km=km, time=time, nbTracks=nbTracks)
 
         line_created = result.single()['l1']
-        print("Created Line: {city1} - {city2}".format(city1=line_created['c1'], city2=line_created['c2']))
+        # print("Created Line: {city1} - {city2}".format(city1=line_created['c1'], city2=line_created['c2']))
 
 
 if __name__ == "__main__":
