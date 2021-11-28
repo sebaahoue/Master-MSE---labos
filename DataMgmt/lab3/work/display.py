@@ -53,8 +53,18 @@ class DisplayTrainNetwork:
             session.read_transaction(self._display_cities_request, map_2_2)
         map_2_2.save('out/2.2.html')
 
-    def display_shortest_km(self):
+    def display_shortest_path_km(self):
         map_2_3_1 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.read_transaction(self._display_shortest_path_km, map_2_3_1)
+        map_2_3_1.save('out/2.3.1.html')
+
+    def display_shortest_path_time(self):
+        map_2_3_2 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.read_transaction(self._display_shortest_path_time, map_2_3_2)
+        map_2_3_2.save('out/2.3.2.html')
+            
 
 
     @staticmethod
@@ -108,21 +118,6 @@ class DisplayTrainNetwork:
                 longitude=record['c1']['longitude']
             )
 
-    @staticmethod
-    def _create_graph_lines_km(tx, m):
-        query = (
-            """
-            CALL gds.graph.create(
-                'lineKM',
-                'City',
-                'Line',
-                {
-                    relationshipProperties: 'km'
-                }
-            )
-            """
-        )
-        result = tx.run(query)
 
     @staticmethod
     def _display_shortest_path_km(tx, m):
@@ -147,28 +142,62 @@ class DisplayTrainNetwork:
             """
         )
         result = tx.run(query)
+        path_cities=[]
         for record in result:
+            for node in record['path']:
+                path_cities.append(node)
+        for city in path_cities:
+            display_city_on_map(
+                m=m,
+                popup=city['name'],
+                latitude=city['latitude'],
+                longitude=city['longitude']
+            )
+        for i in range(1, len(path_cities)):
             display_polyline_on_map(
                 m=m,
-                # display lines
+                locations=[(path_cities[i-1]['latitude'], path_cities[i-1]['longitude']), (path_cities[i]['latitude'], path_cities[i]['longitude'])]
             )
 
     @staticmethod
-    def _create_graph_lines_time(tx, m):
+    def _display_shortest_path_time(tx, m):
         query = (
             """
-            CALL gds.graph.create(
-                'lineTime',
-                'City',
-                'Line',
-                {
-                    relationshipProperties: 'time'
-                }
-            )
+            MATCH (source:City {name: 'Geneve'}), (target:City {name: 'Chur'})
+            CALL gds.shortestPath.dijkstra.stream('lineTime', {
+                sourceNode: source,
+                targetNode: target,
+                relationshipWeightProperty: 'time'
+            })
+            YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
+            RETURN
+                index,
+                gds.util.asNode(sourceNode).name AS sourceNodeName,
+                gds.util.asNode(targetNode).name AS targetNodeName,
+                totalCost,
+                [nodeId IN nodeIds | gds.util.asNode(nodeId).name] AS nodeNames,
+                costs,
+                nodes(path) as path
+            ORDER BY index
             """
         )
         result = tx.run(query)
-
+        path_cities=[]
+        for record in result:
+            for node in record['path']:
+                path_cities.append(node)
+        for city in path_cities:
+            display_city_on_map(
+                m=m,
+                popup=city['name'],
+                latitude=city['latitude'],
+                longitude=city['longitude']
+            )
+        for i in range(1, len(path_cities)):
+            display_polyline_on_map(
+                m=m,
+                locations=[(path_cities[i-1]['latitude'], path_cities[i-1]['longitude']), (path_cities[i]['latitude'], path_cities[i]['longitude'])]
+            )
 
 
 if __name__ == "__main__":
@@ -180,3 +209,5 @@ if __name__ == "__main__":
     display_train_network.display_cities()
     display_train_network.display_lines()
     display_train_network.display_city_requests()
+    display_train_network.display_shortest_path_km()
+    display_train_network.display_shortest_path_time()

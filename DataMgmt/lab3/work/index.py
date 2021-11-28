@@ -36,6 +36,18 @@ class GenerateTrainNetwork:
                     row['nbTracks']
                 )
 
+    def create_graph_lines_km(self):
+        with self.driver.session() as session:
+            session.write_transaction(
+                self._create_graph_lines_km
+            )
+    
+    def create_graph_lines_time(self):
+        with self.driver.session() as session:
+            session.write_transaction(
+                self._create_graph_lines_time
+            )
+
 
     @staticmethod
     def _create_city(tx, name, latitude, longitude, population):
@@ -66,6 +78,39 @@ class GenerateTrainNetwork:
         line_created = result.single()['l1']
         # print("Created Line: {city1} - {city2}".format(city1=line_created['c1'], city2=line_created['c2']))
 
+    
+    @staticmethod
+    def _create_graph_lines_km(tx):
+        query = (
+            """
+            CALL gds.graph.create(
+                'lineKM',
+                'City',
+                'Line',
+                {
+                    relationshipProperties: 'km'
+                }
+            )
+            """
+        )
+        result = tx.run(query)
+
+    @staticmethod
+    def _create_graph_lines_time(tx):
+        query = (
+            """
+            CALL gds.graph.create(
+                'lineTime',
+                'City',
+                'Line',
+                {
+                    relationshipProperties: 'time'
+                }
+            )
+            """
+        )
+        result = tx.run(query)
+
 
 if __name__ == "__main__":
     generate_train_network = GenerateTrainNetwork("neo4j://localhost:7687")
@@ -73,3 +118,5 @@ if __name__ == "__main__":
     # create all city nodes
     generate_train_network.create_cities()
     generate_train_network.create_lines()
+    generate_train_network.create_graph_lines_km()
+    generate_train_network.create_graph_lines_time()
