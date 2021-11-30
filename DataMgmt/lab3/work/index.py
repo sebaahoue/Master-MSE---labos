@@ -36,6 +36,12 @@ class GenerateTrainNetwork:
                     row['nbTracks']
                 )
 
+    def add_cost_property(self):
+        with self.driver.session() as session:
+            session.write_transaction(
+                self._add_cost_property
+            )
+
     def create_graph_lines_km(self):
         with self.driver.session() as session:
             session.write_transaction(
@@ -46,6 +52,12 @@ class GenerateTrainNetwork:
         with self.driver.session() as session:
             session.write_transaction(
                 self._create_graph_lines_time
+            )
+
+    def create_minst(self):
+         with self.driver.session() as session:
+            session.write_transaction(
+                self._create_minst
             )
 
 
@@ -78,6 +90,17 @@ class GenerateTrainNetwork:
         line_created = result.single()['l1']
         # print("Created Line: {city1} - {city2}".format(city1=line_created['c1'], city2=line_created['c2']))
 
+    @staticmethod
+    def _add_cost_property(tx):
+
+        query = (
+            """
+            Match (c1:City)-[l:Line]-(c2:City)
+            Set l.cost = l.nbTracks * l.km
+            return l
+            """
+        )
+        result = tx.run(query)
     
     @staticmethod
     def _create_graph_lines_km(tx):
@@ -111,6 +134,32 @@ class GenerateTrainNetwork:
         )
         result = tx.run(query)
 
+    @staticmethod
+    def _create_minst(tx):
+        query = (
+            """
+            MATCH (c:City {name: 'Bern'})
+            CALL gds.alpha.spanningTree.minimum.write({
+            nodeProjection: 'City',
+            relationshipProjection: {
+                Line: {
+                type: 'Line',
+                properties: 'cost',
+                orientation: 'UNDIRECTED'
+                }
+            },
+            startNodeId: id(c),
+            relationshipWeightProperty: 'cost',
+            writeProperty: 'MINST',
+            weightWriteProperty: 'writeCost'
+            })
+            YIELD createMillis, computeMillis, writeMillis, effectiveNodeCount
+            RETURN createMillis, computeMillis, writeMillis, effectiveNodeCount;
+            """
+        )
+        result = tx.run(query)
+    
+
 
 if __name__ == "__main__":
     generate_train_network = GenerateTrainNetwork("neo4j://localhost:7687")
@@ -120,3 +169,5 @@ if __name__ == "__main__":
     generate_train_network.create_lines()
     generate_train_network.create_graph_lines_km()
     generate_train_network.create_graph_lines_time()
+    generate_train_network.add_cost_property()
+    generate_train_network.create_minst()

@@ -64,6 +64,14 @@ class DisplayTrainNetwork:
         with self.driver.session() as session:
             session.read_transaction(self._display_shortest_path_time, map_2_3_2)
         map_2_3_2.save('out/2.3.2.html')
+
+    def display_minst(self):
+        map_2_4 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.read_transaction(self._display_cities, map_2_4)
+            session.read_transaction(self._display_lines, map_2_4)
+            session.read_transaction(self._display_minst, map_2_4)
+        map_2_4.save('out/2.4.html')
             
 
 
@@ -199,6 +207,26 @@ class DisplayTrainNetwork:
                 locations=[(path_cities[i-1]['latitude'], path_cities[i-1]['longitude']), (path_cities[i]['latitude'], path_cities[i]['longitude'])]
             )
 
+    @staticmethod
+    def _display_minst(tx, m):
+        query = (
+            """
+            MATCH path = (c:City {name: 'Bern'})-[:MINST*]-()
+            WITH relationships(path) AS rels
+            UNWIND rels AS rel
+            WITH DISTINCT rel AS rel
+            RETURN startNode(rel) AS c1, endNode(rel) AS c2
+            """
+        )
+        result = tx.run(query)
+        for record in result:
+            # print(record)
+            display_polyline_on_map(
+                m=m,
+                locations=[(record['c1']['latitude'], record['c1']['longitude']),(record['c2']['latitude'], record['c2']['longitude'])],
+                color='#d11b1b'
+            )
+
 
 if __name__ == "__main__":
     display_train_network = DisplayTrainNetwork("neo4j://localhost:7687")
@@ -211,3 +239,4 @@ if __name__ == "__main__":
     display_train_network.display_city_requests()
     display_train_network.display_shortest_path_km()
     display_train_network.display_shortest_path_time()
+    display_train_network.display_minst()
